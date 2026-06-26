@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SMS Spam Classifier – AI-powered dashboard to detect spam and ham messages using Multinomial Naive Bayes with 97.2% accuracy." />
+  <title>SMS Spam Classifier · Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
+</head>
+<body>
+
+<!-- ── Hero ──────────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-icon">🛡️</div>
+  <h1>SMS Spam Classifier</h1>
+  <p>AI-powered detection of spam and ham messages using Multinomial Naive Bayes</p>
+  <div class="hero-badges">
+    <span class="badge badge-green">✅ 97.2% Accuracy</span>
+    <span class="badge badge-blue">⚡ Naive Bayes</span>
+    <span class="badge badge-purple">🔤 TF-IDF Features</span>
+  </div>
+</header>
+
+<!-- ── Navigation ───────────────────────────────────────────────────── -->
+<nav class="nav">
+  <button class="nav-btn active" data-tab="classify" id="nav-classify">🔍 Classify</button>
+  <button class="nav-btn" data-tab="batch" id="nav-batch">📋 Batch</button>
+  <button class="nav-btn" data-tab="history" id="nav-history">🕓 History</button>
+  <button class="nav-btn" data-tab="model" id="nav-model">🤖 Model Info</button>
+
+  <!-- spacer + status -->
+  <div style="flex:1"></div>
+  <div style="display:flex;align-items:center;gap:8px;padding:0 8px;font-size:0.78rem;color:var(--text-secondary)">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Checking…</span>
+  </div>
+</nav>
+
+<!-- ── Main Content ──────────────────────────────────────────────────── -->
+<main class="container">
+
+  <!-- ╔═ TAB: Classify ════════════════════════════════════════════════╗ -->
+  <section class="tab-panel active" id="tab-classify">
+
+    <!-- Session Stats Row -->
+    <div class="stats-grid">
+      <div class="stat-card stat-blue">
+        <span class="stat-label">Total Classified</span>
+        <span class="stat-value" id="stat-total">0</span>
+        <span class="stat-sub">this session</span>
+      </div>
+      <div class="stat-card stat-red">
+        <span class="stat-label">Spam Detected</span>
+        <span class="stat-value" id="stat-spam">0</span>
+        <span class="stat-sub" id="stat-spam-pct">0%</span>
+      </div>
+      <div class="stat-card stat-green">
+        <span class="stat-label">Ham Messages</span>
+        <span class="stat-value" id="stat-ham">0</span>
+        <span class="stat-sub" id="stat-ham-pct">0%</span>
+      </div>
+      <div class="stat-card stat-amber">
+        <span class="stat-label">Model Accuracy</span>
+        <span class="stat-value" id="stat-accuracy">97.22%</span>
+        <span class="stat-sub">on test set</span>
+      </div>
+    </div>
+
+    <!-- Classifier -->
+    <div class="card">
+      <p class="card-title">Single Message Classifier</p>
+
+      <div class="classifier-grid">
+        <!-- Left: Input -->
+        <div class="input-group">
+          <label for="single-message">Enter an SMS message to classify</label>
+          <textarea
+            id="single-message"
+            rows="6"
+            maxlength="5000"
+            placeholder="Type or paste an SMS message here…&#10;&#10;Example: &quot;Congratulations! You've won a FREE prize. Call now!&quot;"
+          ></textarea>
+          <div class="char-count"><span id="char-count">0 / 5000</span></div>
+
+          <!-- Quick samples -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+            <button class="btn btn-secondary btn-sm sample-btn" data-msg="Congratulations! You've won a FREE iPhone. Click here to claim your prize!!!">🚫 Spam sample</button>
+            <button class="btn btn-secondary btn-sm sample-btn" data-msg="Hey, are you coming to dinner tonight? Let me know!">✅ Ham sample</button>
+            <button class="btn btn-secondary btn-sm" id="random-sample-btn">🎲 Random</button>
+          </div>
+
+          <button class="btn btn-primary" id="classify-btn">
+            <div class="spinner" id="classify-spinner"></div>
+            <span class="btn-text">🔍 Classify Message</span>
+          </button>
+        </div>
+
+        <!-- Right: Result -->
+        <div>
+          <div class="result-card" id="result-card">
+            <div class="result-label" id="result-label"></div>
+
+            <div class="confidence-bar">
+              <div class="confidence-fill" id="result-conf-bar" style="width:0%"></div>
+            </div>
+
+            <div class="result-meta">
+              <div class="result-meta-item">
+                <span class="result-meta-label">Confidence</span>
+                <span class="result-meta-value" id="result-confidence">—</span>
+              </div>
+              <div class="result-meta-item">
+                <span class="result-meta-label">Process Time</span>
+                <span class="result-meta-value" id="result-time">—</span>
+              </div>
+              <div class="result-meta-item">
+                <span class="result-meta-label">Timestamp</span>
+                <span class="result-meta-value" id="result-timestamp">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Placeholder when no result yet -->
+          <div id="result-placeholder" style="text-align:center;padding:48px 24px;color:var(--text-muted)">
+            <div style="font-size:3rem;margin-bottom:12px">🔎</div>
+            <p style="font-size:0.875rem">Your classification result will appear here</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+  <!-- ╚════════════════════════════════════════════════════════════════╝ -->
+
+
+  <!-- ╔═ TAB: Batch ═══════════════════════════════════════════════════╗ -->
+  <section class="tab-panel" id="tab-batch">
+    <div class="card">
+      <p class="card-title">Batch Message Classifier</p>
+      <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:20px">
+        Classify up to 100 SMS messages at once — paste one message per line or upload a <code>.txt</code> file.
+      </p>
+
+      <!-- File Upload -->
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".txt,text/plain" />
+        <div style="font-size:2rem;margin-bottom:8px">📂</div>
+        <p>Drop a <strong>.txt</strong> file here or <u>click to browse</u></p>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">One message per line</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="input-group">
+        <label for="batch-messages">Or paste messages (one per line)</label>
+        <textarea
+          id="batch-messages"
+          class="batch-textarea"
+          rows="8"
+          placeholder="Message 1&#10;Message 2&#10;Message 3&#10;…"
+        ></textarea>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="batch-btn" style="flex:1;min-width:180px">
+          <div class="spinner" id="batch-spinner"></div>
+          <span class="btn-text">📋 Classify All Messages</span>
+        </button>
+        <button class="btn btn-secondary" id="clear-batch-btn">🗑️ Clear</button>
+      </div>
+    </div>
+
+    <!-- Batch Results -->
+    <div class="batch-results section-gap" id="batch-results">
+      <div class="card">
+        <p class="card-title">Batch Results</p>
+
+        <div class="batch-summary">
+          <div class="batch-sum-card">
+            <div class="batch-sum-val" style="color:var(--accent-blue)" id="batch-total">0</div>
+            <div class="batch-sum-label">Total</div>
+          </div>
+          <div class="batch-sum-card">
+            <div class="batch-sum-val" style="color:var(--accent-red)" id="batch-spam">0</div>
+            <div class="batch-sum-label">Spam</div>
+          </div>
+          <div class="batch-sum-card">
+            <div class="batch-sum-val" style="color:var(--accent-green)" id="batch-ham">0</div>
+            <div class="batch-sum-label">Ham</div>
+          </div>
+          <div class="batch-sum-card">
+            <div class="batch-sum-val mono" style="color:var(--accent-amber);font-size:1.2rem" id="batch-time">—</div>
+            <div class="batch-sum-label">Total Time</div>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Message</th>
+                <th>Label</th>
+                <th>Confidence</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="batch-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ╚════════════════════════════════════════════════════════════════╝ -->
+
+
+  <!-- ╔═ TAB: History ═════════════════════════════════════════════════╗ -->
+  <section class="tab-panel" id="tab-history">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <p class="card-title" style="margin-bottom:0">Classification History</p>
+        <button class="btn btn-secondary btn-sm" id="history-clear">🗑️ Clear History</button>
+      </div>
+
+      <!-- Empty state -->
+      <div class="empty-state" id="history-empty">
+        <div class="empty-state-icon">📭</div>
+        <p>No classifications yet — classify a message to see it here.</p>
+      </div>
+
+      <!-- History table -->
+      <div class="table-wrapper" id="history-wrapper" style="display:none">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Message</th>
+              <th>Label</th>
+              <th>Confidence</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  <!-- ╚════════════════════════════════════════════════════════════════╝ -->
+
+
+  <!-- ╔═ TAB: Model Info ══════════════════════════════════════════════╗ -->
+  <section class="tab-panel" id="tab-model">
+    <div class="card">
+      <p class="card-title">Model Information</p>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-key">Algorithm</div>
+          <div class="info-val accent" id="info-algo">Multinomial Naive Bayes</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Test Accuracy</div>
+          <div class="info-val green" id="info-accuracy">97.22%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Dataset Size</div>
+          <div class="info-val" id="info-dataset">5,572 messages</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Feature Count</div>
+          <div class="info-val" id="info-features">5,000 TF-IDF features</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Vectorizer</div>
+          <div class="info-val" id="info-vectorizer">TF-IDF (stop_words=english)</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Output Classes</div>
+          <div class="info-val" id="info-classes">Ham (0) · Spam (1)</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Performance Metrics -->
+      <p class="card-title">Performance Metrics</p>
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-key">Overall Accuracy</div>
+          <div class="info-val green">97.22%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Ham Precision</div>
+          <div class="info-val">97%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Ham Recall</div>
+          <div class="info-val">100%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Ham F1-Score</div>
+          <div class="info-val">98%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Spam Precision</div>
+          <div class="info-val">99%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Spam Recall</div>
+          <div class="info-val">80%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Spam F1-Score</div>
+          <div class="info-val">88%</div>
+        </div>
+        <div class="info-item">
+          <div class="info-key">Test Set Size</div>
+          <div class="info-val">1,115 messages</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Pipeline -->
+      <p class="card-title">Pipeline</p>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px">
+        <div class="badge badge-blue">Raw SMS Text</div>
+        <span style="color:var(--text-muted)">→</span>
+        <div class="badge badge-purple">TF-IDF Vectorizer</div>
+        <span style="color:var(--text-muted)">→</span>
+        <div class="badge badge-blue">5,000 Features</div>
+        <span style="color:var(--text-muted)">→</span>
+        <div class="badge badge-purple">MultinomialNB</div>
+        <span style="color:var(--text-muted)">→</span>
+        <div class="badge badge-green">Spam / Ham Label</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- API Reference -->
+      <p class="card-title">API Reference</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="info-item" style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+          <span style="color:var(--accent-green);font-weight:700">POST</span>
+          <span style="color:var(--accent-blue);margin-left:8px">/classify</span>
+          <span style="color:var(--text-muted);margin-left:12px">— Classify single message</span>
+        </div>
+        <div class="info-item" style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+          <span style="color:var(--accent-green);font-weight:700">POST</span>
+          <span style="color:var(--accent-blue);margin-left:8px">/classify/batch</span>
+          <span style="color:var(--text-muted);margin-left:12px">— Classify up to 100 messages</span>
+        </div>
+        <div class="info-item" style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+          <span style="color:var(--accent-cyan);font-weight:700">GET</span>
+          <span style="color:var(--accent-blue);margin-left:8px">/health</span>
+          <span style="color:var(--text-muted);margin-left:12px">— Health check & model status</span>
+        </div>
+        <div class="info-item" style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+          <span style="color:var(--accent-cyan);font-weight:700">GET</span>
+          <span style="color:var(--accent-blue);margin-left:8px">/stats</span>
+          <span style="color:var(--text-muted);margin-left:12px">— Session classification statistics</span>
+        </div>
+        <div class="info-item" style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+          <span style="color:var(--accent-cyan);font-weight:700">GET</span>
+          <span style="color:var(--accent-blue);margin-left:8px">/docs</span>
+          <span style="color:var(--text-muted);margin-left:12px">— Interactive Swagger UI</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ╚════════════════════════════════════════════════════════════════╝ -->
+
+</main>
+
+<!-- ── Toast Container ───────────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/static/js/app.js"></script>
+
+<!-- Hide placeholder once result is shown -->
+<script>
+  const resultCard = document.getElementById('result-card');
+  const placeholder = document.getElementById('result-placeholder');
+  const observer = new MutationObserver(() => {
+    placeholder.style.display = resultCard.classList.contains('visible') ? 'none' : 'block';
+  });
+  observer.observe(resultCard, { attributes: true, attributeFilter: ['class'] });
+</script>
+
+</body>
+</html>
